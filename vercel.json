@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "app/api/summarize/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "env": {
+    "YOUTUBE_DL_SKIP_PYTHON_CHECK": "1"
+  }
+} 

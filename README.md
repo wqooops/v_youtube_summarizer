@@ -132,6 +132,58 @@ Note for Docker installation:
 - At least one API key is required
 - The application will be available at http://localhost:3000
 
+#### Option 3: Vercel Deployment (Recommended for Production)
+
+1. **Setup Database** (Choose one option):
+
+   **Option A: Vercel Postgres (Recommended)**
+   - Go to your Vercel dashboard
+   - Create a new Postgres database
+   - Copy the connection string
+
+   **Option B: External PostgreSQL**
+   - Use services like [Neon](https://neon.tech), [Supabase](https://supabase.com), or [PlanetScale](https://planetscale.com)
+   - Create a database and get the connection string
+
+2. **Deploy to Vercel**:
+   ```bash
+   # Install Vercel CLI
+   npm i -g vercel
+   
+   # Deploy
+   vercel
+   ```
+
+3. **Configure Environment Variables in Vercel**:
+   - Go to your Vercel project settings
+   - Add the following environment variables:
+   ```env
+   DATABASE_URL=your-postgresql-connection-string
+   GEMINI_API_KEY=your-gemini-api-key
+   GROQ_API_KEY=your-groq-api-key
+   OPENAI_API_KEY=your-openai-api-key
+   ```
+
+4. **Setup Database Schema**:
+   ```bash
+   # Generate Prisma client for PostgreSQL
+   npx prisma generate
+   
+   # Deploy database schema to production
+   npx prisma db push
+   ```
+
+5. **Redeploy** to apply the database changes:
+   ```bash
+   vercel --prod
+   ```
+
+**Important Notes for Vercel Deployment:**
+- The application will automatically handle database connection errors gracefully
+- If database is not configured, summaries will still work but won't be saved to history
+- Function timeout is set to 5 minutes for long video processing
+- The app supports serverless functions with optimized performance
+
 The application will be available at [http://localhost:3000](http://localhost:3000)
 
 ## 🔧 Configuration

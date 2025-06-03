@@ -28,6 +28,9 @@ function extractTitleFromContent(content: string): string {
 
 export async function GET() {
   try {
+    // Test database connection first
+    await prisma.$connect();
+    
     const summaries = await prisma.summary.findMany({
       orderBy: {
         createdAt: 'desc'
@@ -40,11 +43,26 @@ export async function GET() {
     }));
 
     return NextResponse.json({ summaries: processedSummaries });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching summaries:', error);
+    
+    // Check if it's a database connection error
+    if (error.code === 'P1001' || error.message?.includes('database') || error.message?.includes('connect')) {
+      return NextResponse.json(
+        { 
+          error: 'Database not configured', 
+          message: 'Please configure DATABASE_URL environment variable',
+          summaries: [] // Return empty array as fallback
+        },
+        { status: 200 } // Return 200 instead of 500 to avoid blocking the UI
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch summaries' },
-      { status: 500 }
+      { error: 'Failed to fetch summaries', summaries: [] },
+      { status: 200 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }

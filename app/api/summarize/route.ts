@@ -531,12 +531,19 @@ export async function POST(req: Request) {
       logger.info(`Using ${MODEL_NAMES[aiModel as keyof typeof MODEL_NAMES]} model for generation...`);
 
       // Check cache first
-      const existingSummary = await prisma.summary.findFirst({
-        where: {
-          videoId,
-          language
-        }
-      });
+      let existingSummary = null;
+      try {
+        await prisma.$connect();
+        existingSummary = await prisma.summary.findFirst({
+          where: {
+            videoId,
+            language
+          }
+        });
+      } catch (dbError: any) {
+        logger.info('Database not available for cache check, proceeding without cache:', dbError?.message);
+        // Continue without cache if database is not available
+      }
 
       if (existingSummary) {
         await writeProgress({
@@ -614,6 +621,9 @@ export async function POST(req: Request) {
       });
 
       try {
+        // Connect to database first
+        await prisma.$connect();
+        
         // Check if summary already exists
         const existingSummary = await prisma.summary.findFirst({
           where: {
@@ -657,16 +667,33 @@ export async function POST(req: Request) {
           status: 'completed'
         });
       } catch (dbError: any) {
-        console.warn('Warning: Failed to save to database -', dbError?.message || 'Unknown database error');
+        const errorMessage = dbError?.message || 'Unknown database error';
+        
+        if (dbError.code === 'P1001' || errorMessage.includes('database') || errorMessage.includes('connect')) {
+          console.warn('Warning: Database not configured properly. Summary generated but not saved to history.');
+          
+          // Still return the summary even if saving failed
+          await writeProgress({
+            type: 'complete',
+            summary,
+            source: source || 'youtube',
+            status: 'completed',
+            warning: 'Database not configured - summary not saved to history'
+          });
+        } else {
+          console.warn('Warning: Failed to save to database -', errorMessage);
 
-        // Still return the summary even if saving failed
-        await writeProgress({
-          type: 'complete',
-          summary,
-          source: source || 'youtube',
-          status: 'completed',
-          warning: 'Failed to save to history'
-        });
+          // Still return the summary even if saving failed
+          await writeProgress({
+            type: 'complete',
+            summary,
+            source: source || 'youtube',
+            status: 'completed',
+            warning: 'Failed to save to history'
+          });
+        }
+      } finally {
+        await prisma.$disconnect();
       }
 
     } catch (error: any) {
